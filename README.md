@@ -10,7 +10,7 @@ Contact : nibrasexpertise@gmail.com · +222 33 03 55 33
 
 ## Sources et composants
 
-- Moughataas : ANSADE, recensement général de la population et de l'habitat 2023 (liste reprise par citypopulation.de). Les moughataas de Nouakchott sont à vérifier.
-- Communes : liste publique (Wikipédia, « Liste des communes de Mauritanie »), à confirmer avec la liste officielle du ministère de l'Intérieur.
+- Moughataas : ANSADE, recensement général de la population et de l'habitat 2023 (liste reprise par citypopulation.de).
+- Communes : 238 communes du RGPH 2023 de l'ANSADE (dont 9 à Nouakchott), rattachées à leur moughataa (liste reprise par citypopulation.de).
 - Image satellite : Esri World Imagery (attribution affichée sur la carte ; conditions d'utilisation à vérifier avant un usage commercial à grande échelle).
 - Carte interactive : Leaflet 1.9.4 (licence BSD-2), fichiers `leaflet.js` et `leaflet.css`.

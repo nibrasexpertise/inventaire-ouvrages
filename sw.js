@@ -1,5 +1,5 @@
 /* Nibras Expertise · Inventaire des ouvrages hydrauliques · fonctionnement hors connexion */
-const CACHE='nibras-inventaire-v2.1';
+const CACHE='nibras-inventaire-v2.2';
 const TILES='nibras-tuiles-v1';      /* images satellite déjà affichées */
 const MAX_TILES=3000;                /* environ 60 à 100 Mo au plus */
 const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./leaflet.js','./leaflet.css'];
