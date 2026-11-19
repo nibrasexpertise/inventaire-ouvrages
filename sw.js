@@ -1,8 +1,8 @@
 /* Nibras Expertise · Inventaire des ouvrages hydrauliques · fonctionnement hors connexion */
-const CACHE='nibras-inventaire-v2.3';
+const CACHE='nibras-inventaire-v2.4';
 const TILES='nibras-tuiles-v1';      /* images satellite déjà affichées */
 const MAX_TILES=3000;                /* environ 60 à 100 Mo au plus */
-const CORE=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./leaflet.js','./leaflet.css'];
+const CORE=['./','./index.html','./manifest.webmanifest','./icon-eau-192.png','./icon-eau-512.png','./leaflet.js','./leaflet.css'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==CACHE&&n!==TILES).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});
 async function trim(){const c=await caches.open(TILES);const k=await c.keys();for(let i=0;i<k.length-MAX_TILES;i++)await c.delete(k[i])}
