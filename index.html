@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Inventaire des ouvrages hydrauliques</title>
+<meta name="theme-color" content="#4E6B3D">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@500;600;700&family=Poppins:wght@400;500;600&family=Noto+Naskh+Arabic:wght@500;600&family=Noto+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Plan : application de terrain à quatre vues (Tableau, Ouvrages, Carte, Fiche) ; l'état de chaque ouvrage est codé par couleur partout. Version 2.0. */
+:root{
+  --bg:#FFFFFF; --surface:#F5F6F2; --text:#2B2B2B; --muted:#686A63; --line:#DFE1D9;
+  --accent:#4E6B3D; --on-accent:#FFFFFF; --accent-soft:#E7EDE1; --brand:#F2C200;
+  --ok:#3F6B35; --ok-soft:#E3EEDC; --warn:#9A6A00; --warn-soft:#FBF0D3; --bad:#B3261E; --bad-soft:#F9E1DF; --off:#7A7C76; --off-soft:#ECECEA;
+  --land:#F3EEE2; --water:#DCE8EE;
+  --display:"Lora","Noto Naskh Arabic",Georgia,"Times New Roman",serif; --body:"Poppins","Noto Sans Arabic",system-ui,-apple-system,"Segoe UI",Roboto,Tahoma,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#161917; --surface:#202521; --text:#ECEDE8; --muted:#A5A9A1; --line:#343A35;
+  --accent:#93B57F; --on-accent:#16200F; --accent-soft:#26301F; --brand:#F2C200; --ok:#8DBA7C; --ok-soft:#243121; --warn:#E3B24A; --warn-soft:#352B14; --bad:#F08A80; --bad-soft:#3A1F1D; --off:#9A9C96; --off-soft:#2A2D2B;
+  --land:#262A26; --water:#1C2A30; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#161917; --surface:#202521; --text:#ECEDE8; --muted:#A5A9A1; --line:#343A35;
+  --accent:#93B57F; --on-accent:#16200F; --accent-soft:#26301F; --brand:#F2C200; --ok:#8DBA7C; --ok-soft:#243121; --warn:#E3B24A; --warn-soft:#352B14; --bad:#F08A80; --bad-soft:#3A1F1D; --off:#9A9C96; --off-soft:#2A2D2B;
+  --land:#262A26; --water:#1C2A30; color-scheme:dark;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5}
+:root[dir="rtl"] body{font-size:16px}
+.wrap{max-width:960px;margin:0 auto;padding-block:20px 110px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+header.top{display:flex;gap:14px;align-items:flex-start}
+header.top .rule{width:3px;align-self:stretch;background:var(--brand);border-radius:2px}
+header.top .hd{flex:1;min-width:0}
+.brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500}
+:root[dir="rtl"] .brand{letter-spacing:0}
+h1{font-family:var(--display);font-weight:600;font-size:26px;line-height:1.25;margin:2px 0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:18px;margin:0;text-wrap:balance}
+h3{font-size:14.5px;font-weight:600;margin:0}
+.sub{color:var(--muted);margin:0;font-size:14px}
+nav.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5}
+nav.tabs a{border-radius:4px;padding:9px 4px;font-size:13.5px;text-align:center;text-decoration:none;color:var(--text);font-weight:500}
+nav.tabs a[aria-current="page"]{background:var(--accent);color:var(--on-accent)}
+.view{display:none;flex-direction:column;gap:18px}
+.view.on{display:flex}
+.banner{border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px;background:var(--warn-soft);color:var(--text)}
+.banner.bad{background:var(--bad-soft)}
+.banner.info{background:var(--accent-soft)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{border:1px solid var(--line);border-radius:8px;padding:12px}
+.kpi.main{border-inline-start:4px solid var(--accent);background:var(--surface)}
+.kpi .k{font-size:12px;color:var(--muted)} .kpi .v{font-family:var(--display);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .s{font-size:12px;color:var(--muted)}
+.bar{display:flex;height:22px;border-radius:4px;overflow:hidden;background:var(--line)}
+.bar div{height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:5px;vertical-align:-1px}
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:start;white-space:nowrap}
+th{background:var(--surface);font-size:12.5px;font-weight:600}
+td.n,th.n{text-align:end}
+tr[data-open]{cursor:pointer}
+.block{display:flex;flex-direction:column;gap:10px}
+.pill{display:inline-block;font-size:12px;font-weight:500;border-radius:50px;padding:2px 10px;white-space:nowrap}
+.e-F{background:var(--ok-soft);color:var(--ok)} .e-P{background:var(--warn-soft);color:var(--warn)} .e-X{background:var(--bad-soft);color:var(--bad)} .e-A{background:var(--off-soft);color:var(--off)} .e-{background:var(--off-soft);color:var(--off)}
+.pill.ex{background:var(--accent-soft);color:var(--accent)}
+.pill.dup{background:var(--bad-soft);color:var(--bad)}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12.5px;color:var(--muted);font-weight:500}
+label.chk{flex-direction:row;align-items:flex-start;gap:8px;font-size:13.5px;color:var(--text);font-weight:400}
+label.chk input{width:20px;height:20px;flex:0 0 auto;margin-top:2px}
+input,select,textarea{font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:9px 10px;width:100%;min-width:0}
+textarea{min-height:80px;resize:vertical}
+input.num{font-variant-numeric:tabular-nums}
+input.ltr{direction:ltr;text-align:start}
+[aria-invalid="true"]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.etats[aria-invalid="true"]{border-radius:6px;padding:3px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.req::after{content:" *";color:var(--bad)}
+.hint{font-size:12px;color:var(--muted);font-weight:400}
+button{font:inherit;font-size:14px;font-weight:500;border-radius:4px;padding:9px 14px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--text);min-height:40px}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+button.ghost{background:transparent}
+button.danger{color:var(--bad)}
+button.small{min-height:32px;padding:5px 10px;font-size:13px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;grid-template-columns:72px 1fr;gap:12px;cursor:pointer;background:var(--bg);text-align:start;font-weight:400;width:100%}
+.card:hover{border-color:var(--accent)}
+.card>span{min-width:0}
+.thumb{width:72px;height:72px;border-radius:4px;background:var(--surface);object-fit:cover;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;text-align:center}
+.card .t{display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+.card .t b{font-size:15px}
+.card .m{font-size:13px;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;margin:0}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:14px;margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
+legend{font-family:var(--display);font-weight:600;font-size:16.5px;padding:0 6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.etats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:6px}
+.etats button{padding:10px 6px;font-size:13.5px;background:var(--bg)}
+.etats button[aria-pressed="true"].F{background:var(--ok);border-color:var(--ok);color:var(--bg)}
+.etats button[aria-pressed="true"].P{background:var(--warn);border-color:var(--warn);color:var(--bg)}
+.etats button[aria-pressed="true"].X{background:var(--bad);border-color:var(--bad);color:var(--bg)}
+.etats button[aria-pressed="true"].A{background:var(--off);border-color:var(--off);color:var(--bg)}
+.photos{display:flex;gap:10px;flex-wrap:wrap}
+.photos figure{margin:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.photos img{width:140px;height:105px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.filebtn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;border-radius:4px;padding:9px 14px;border:1px solid var(--line);background:var(--surface);color:var(--text);cursor:pointer;min-height:40px}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.visits{font-size:13.5px;display:flex;flex-direction:column;gap:6px}
+.visits div{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.savebar{position:fixed;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));z-index:6}
+.savebar .in{max-width:960px;margin:0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.savebar .msg{font-size:13px;color:var(--bad);flex:1 1 200px}
+.map-wrap{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--water);direction:ltr}
+svg.map{display:block;width:100%;height:auto;max-height:70vh}
+svg.map .land{fill:var(--land);stroke:var(--muted);stroke-width:1.2}
+svg.map .grid line{stroke:var(--line);stroke-width:.6}
+svg.map text{font-family:var(--body);fill:var(--muted)}
+svg.map rect.city{fill:var(--muted)}
+svg.map circle.pt{stroke:var(--bg);stroke-width:1.5;cursor:pointer}
+svg.map circle.pt.sel{stroke:var(--text);stroke-width:3}
+.mapinfo{border:1px solid var(--line);border-radius:8px;padding:12px;min-height:60px}
+.note{font-size:12.5px;color:var(--muted);margin:0;max-width:75ch}
+details{border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+details summary{cursor:pointer;font-weight:600;font-size:14px}
+details .body{display:flex;flex-direction:column;gap:8px;margin-top:10px;font-size:13.5px}
+details .body p{margin:0;max-width:75ch}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:90vw}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media (max-width:420px){nav.tabs a{font-size:12.5px}.card{grid-template-columns:56px 1fr}.thumb{width:56px;height:56px}.photos img{width:110px;height:82px}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="top">
+    <div class="rule" aria-hidden="true"></div>
+    <div class="hd">
+      <div class="brand">Nibras Expertise SARL</div>
+      <h1 data-i18n>Inventaire des ouvrages hydrauliques</h1>
+      <p class="sub" data-i18n>Forages, puits, réseaux d'eau et abreuvoirs : état, localisation et suivi des visites</p>
+    </div>
+    <div class="actions">
+      <button class="small" id="bLang" type="button" lang="ar">العربية</button>
+      <button class="small primary" id="bInstall" type="button" hidden data-i18n>Installer</button>
+    </div>
+  </header>
+
+  <div class="banner bad" id="warnDb" hidden data-i18n>Stockage indisponible sur cet appareil : les fiches seront perdues à la fermeture de la page. Exportez une sauvegarde avant de quitter.</div>
+  <div class="banner info" id="warnDemo" hidden data-i18n>Version de démonstration : dans cette page, le GPS et le fonctionnement sans réseau sont bloqués. Pour le terrain, utilisez la version installable.</div>
+
+  <nav class="tabs" aria-label="Vues">
+    <a href="#tableau" data-v="tableau" data-i18n>Tableau</a>
+    <a href="#ouvrages" data-v="ouvrages"><span data-i18n>Ouvrages</span> <span id="nb"></span></a>
+    <a href="#carte" data-v="carte" data-i18n>Carte</a>
+    <a href="#fiche" data-v="fiche" data-i18n>Nouvelle fiche</a>
+  </nav>
+
+  <!-- TABLEAU DE BORD -->
+  <div class="view" id="v-tableau">
+    <div class="filters"><label for="dWil"><span data-i18n>Wilaya</span><select id="dWil"></select></label></div>
+    <div id="dash" class="view on"></div>
+  </div>
+
+  <!-- LISTE -->
+  <div class="view" id="v-ouvrages">
+    <div class="filters">
+      <label for="lQ"><span data-i18n>Recherche</span><input id="lQ" type="search" data-i18n-ph placeholder="Code, localité, commune"></label>
+      <label for="lWil"><span data-i18n>Wilaya</span><select id="lWil"></select></label>
+      <label for="lType"><span data-i18n>Type</span><select id="lType"></select></label>
+      <label for="lEtat"><span data-i18n>État</span><select id="lEtat"></select></label>
+    </div>
+    <div class="cards" id="cards"></div>
+    <fieldset>
+      <legend data-i18n>Exporter et sauvegarder</legend>
+      <p class="note" data-i18n>Les fiches sont conservées dans ce navigateur, sur cet appareil uniquement. Faites une sauvegarde complète chaque soir et envoyez-la au coordinateur.</p>
+      <p class="note" id="lastBackup"></p>
+      <label class="chk" for="xPerso"><input id="xPerso" type="checkbox"><span data-i18n>Inclure le nom et le téléphone des gestionnaires dans les fichiers Excel et QGIS (données personnelles : à ne partager qu'avec le maître d'ouvrage)</span></label>
+      <div class="actions">
+        <button class="primary" id="bJson" type="button" data-i18n>Sauvegarde complète avec photos</button>
+        <button id="bCsv" type="button" data-i18n>Exporter pour Excel (CSV)</button>
+        <button id="bGeo" type="button" data-i18n>Exporter pour QGIS (GeoJSON)</button>
+      </div>
+      <label for="fImp"><span data-i18n>Importer des sauvegardes d'autres équipes (fichiers JSON)</span><input id="fImp" type="file" accept=".json,application/json" multiple></label>
+    </fieldset>
+    <fieldset>
+      <legend data-i18n>Réglages de l'équipe</legend>
+      <div class="grid">
+        <label for="sTeam"><span data-i18n>Code de l'équipe (2 à 4 lettres ou chiffres)</span><input id="sTeam" class="ltr" maxlength="4" autocomplete="off" data-i18n-ph placeholder="ex. EQ1"><span class="hint" data-i18n>Ajouté aux codes des ouvrages pour éviter les doublons entre équipes : BRA-EQ1-001.</span></label>
+        <label for="sAgent"><span data-i18n>Nom de l'enquêteur par défaut</span><input id="sAgent" autocomplete="off"></label>
+      </div>
+      <div class="actions"><button class="ghost danger" id="bClearEx" type="button" data-i18n>Retirer les fiches d'exemple</button></div>
+    </fieldset>
+    <details>
+      <summary data-i18n>Protection des données personnelles</summary>
+      <div class="body">
+        <p data-i18n>Cet outil enregistre surtout des informations techniques sur les ouvrages. Les seules données personnelles possibles sont le nom et le téléphone du gestionnaire, le nom de l'enquêteur et les photos.</p>
+        <p data-i18n>Le nom et le téléphone du gestionnaire ne sont enregistrés qu'avec son accord, coché dans la fiche. Ils sont exclus par défaut des exports Excel et QGIS.</p>
+        <p data-i18n>Photographiez l'ouvrage, pas les personnes. Évitez les visages reconnaissables, surtout ceux des enfants.</p>
+        <p data-i18n>Les données restent sur l'appareil. Protégez le téléphone par un code et ne transmettez les sauvegardes qu'aux personnes autorisées.</p>
+        <p data-i18n>Cadre : loi n° 2017-020 sur la protection des données à caractère personnel. Les formalités auprès de l'Autorité de protection des données sont à vérifier avant un déploiement à grande échelle.</p>
+      </div>
+    </details>
+  </div>
+
+  <!-- CARTE -->
+  <div class="view" id="v-carte">
+    <div class="filters">
+      <label for="mWil"><span data-i18n>Wilaya</span><select id="mWil"></select></label>
+      <label for="mZoom"><span data-i18n>Cadrage</span><select id="mZoom"><option value="pts" data-i18n>Zone des ouvrages</option><option value="all" data-i18n>Toute la Mauritanie</option></select></label>
+    </div>
+    <div class="map-wrap"><svg class="map" id="map" role="img" aria-label="Carte schématique des ouvrages"></svg></div>
+    <div class="legend" id="mLegend"></div>
+    <div class="mapinfo" id="mInfo"></div>
+    <p class="note" data-i18n>Carte schématique sans fond de carte, utilisable hors connexion. Pour une cartographie précise, exportez en GeoJSON et ouvrez le fichier dans QGIS ou Google Earth.</p>
+  </div>
+
+  <!-- FICHE -->
+  <div class="view" id="v-fiche">
+    <div class="banner info" id="draftBar" hidden><div class="actions"><span id="draftTxt" style="flex:1 1 200px"></span><button class="small primary" id="bDraftYes" type="button" data-i18n>Reprendre</button><button class="small ghost" id="bDraftNo" type="button" data-i18n>Ignorer</button></div></div>
+    <form id="form" novalidate></form>
+  </div>
+
+  <p class="note">Nibras Expertise SARL · Nouakchott, Mauritanie · +222 33 03 55 33 · nibrasexpertise@gmail.com · <span data-i18n>Version 2.0 du 19 novembre 2026</span></p>
+</div>
+<div class="savebar" id="savebar" hidden><div class="in">
+  <span class="msg" id="formMsg" role="alert"></span>
+  <button class="ghost danger" id="bDel" type="button" hidden data-i18n>Supprimer</button>
+  <button class="ghost" id="bCancel" type="button" data-i18n>Annuler</button>
+  <button class="primary" id="bSave" type="button" data-i18n>Enregistrer</button>
+</div></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1});
+const f0=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const last=a=>a&&a.length?a[a.length-1]:undefined;
+const pad2=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())};
+const daysSince=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s||''))return null;const a=new Date(s+'T00:00:00'),b=new Date(today()+'T00:00:00');return Math.round((b-a)/864e5)};
+const IN_FRAME=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+const LS={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+
+/* ---------- langue ---------- */
+let LANG=LS.get('nibras-inv-lang')==='ar'?'ar':'fr';
+const AR={"(photos non conservées)": "(لم تُحفظ الصور)", "3 photos au maximum.": "3 صور على الأكثر.", "3 photos au maximum. Photographiez l'ouvrage, pas les personnes.": "3 صور على الأكثر. صوّروا المنشأة لا الأشخاص.", "8 chiffres": "8 أرقام", "Abandonné": "مهجور", "Abreuvoir": "مشرب للماشية", "Ajouté aux codes des ouvrages pour éviter les doublons entre équipes : BRA-EQ1-001.": "يُضاف إلى رموز المنشآت لتفادي التكرار بين الفرق: BRA-EQ1-001.", "Animal": "حيواني", "Annuler": "إلغاء", "Année de réalisation": "سنة الإنجاز", "Appuyez de nouveau pour retirer {n} fiche(s) d'exemple.": "اضغطوا مرة أخرى لحذف {n} من البطاقات التجريبية.", "Appuyez de nouveau sur « Supprimer » pour confirmer.": "اضغطوا مرة أخرى على «حذف» للتأكيد.", "Attention : {n} code(s) en double à corriger.": "تنبيه: {n} رمز مكرر يجب تصحيحه.", "Attention : {n} fiche(s) d'exemple sont incluses dans ces chiffres. Retirez-les dans « Ouvrages » avant tout rapport.": "تنبيه: هذه الأرقام تشمل {n} من البطاقات التجريبية. احذفوها من «المنشآت» قبل إعداد أي تقرير.", "Aucun": "لا يوجد", "Aucun ouvrage en panne.": "لا توجد منشأة معطلة.", "Aucun ouvrage enregistré. Créez une fiche dans « Nouvelle fiche ».": "لا توجد منشأة مسجلة. أنشئوا بطاقة من «بطاقة جديدة».", "Aucun ouvrage géolocalisé.": "لا توجد منشأة محددة الإحداثيات.", "Aucun ouvrage à exporter.": "لا توجد منشأة للتصدير.", "Aucun ouvrage à sauvegarder.": "لا توجد منشأة للحفظ.", "Aucune sauvegarde complète faite sur cet appareil.": "لم تُجرَ أي نسخة احتياطية كاملة على هذا الجهاز.", "Autorisez la localisation pour cette application dans les réglages du téléphone.": "اسمحوا لهذا التطبيق بتحديد الموقع من إعدادات الهاتف.", "Autre": "أخرى", "Bonne": "جيدة", "Borne-fontaine": "حنفية عمومية", "Cadrage": "مجال العرض", "Cadre : loi n° 2017-020 sur la protection des données à caractère personnel. Les formalités auprès de l'Autorité de protection des données sont à vérifier avant un déploiement à grande échelle.": "الإطار: القانون رقم 2017-020 المتعلق بحماية البيانات ذات الطابع الشخصي. يجب التحقق من الإجراءات لدى سلطة حماية البيانات قبل أي استخدام واسع.", "Capacité de stockage (m³)": "سعة التخزين (م³)", "Caractéristiques techniques": "الخصائص الفنية", "Carte": "الخريطة", "Carte schématique des ouvrages": "خريطة تخطيطية للمنشآت", "Carte schématique sans fond de carte, utilisable hors connexion. Pour une cartographie précise, exportez en GeoJSON et ouvrez le fichier dans QGIS ou Google Earth.": "خريطة تخطيطية بدون خلفية، تعمل دون اتصال. لخريطة دقيقة، صدّروا الملف بصيغة GeoJSON وافتحوه في QGIS أو Google Earth.", "Cause": "السبب", "Ce fichier n'est pas une sauvegarde de l'inventaire : {f}": "هذا الملف ليس نسخة احتياطية للجرد: {f}", "Cet outil enregistre surtout des informations techniques sur les ouvrages. Les seules données personnelles possibles sont le nom et le téléphone du gestionnaire, le nom de l'enquêteur et les photos.": "تسجل هذه الأداة أساسًا معلومات فنية عن المنشآت. البيانات الشخصية الوحيدة الممكنة هي اسم المسيّر وهاتفه واسم المحقق والصور.", "Chloration": "معالجة بالكلور", "Choisir dans la galerie": "اختيار من المعرض", "Choisir…": "اختر…", "Château d'eau": "خزان مياه مرتفع", "Classées par population touchée, puis par durée de panne. Touchez une ligne pour ouvrir la fiche.": "مرتبة حسب عدد السكان المتأثرين ثم حسب مدة العطل. المسوا سطرًا لفتح البطاقة.", "Code": "الرمز", "Code d'équipe enregistré : {c}.": "تم حفظ رمز الفريق: {c}.", "Code d'équipe retiré.": "تم حذف رمز الفريق.", "Code de l'ouvrage": "رمز المنشأة", "Code de l'équipe (2 à 4 lettres ou chiffres)": "رمز الفريق (من 2 إلى 4 حروف أو أرقام)", "Code en double": "رمز مكرر", "Code national ou du projet (s'il existe)": "الرمز الوطني أو رمز المشروع (إن وجد)", "Code, localité, commune": "الرمز، القرية، البلدية", "Comité de gestion": "لجنة تسيير", "Commune": "البلدية", "Date de la visite": "تاريخ الزيارة", "Dernière sauvegarde complète sur cet appareil : {d}.": "آخر نسخة احتياطية كاملة على هذا الجهاز: {d}.", "Débit d'exploitation (m³/h)": "صبيب الاستغلال (م³/ساعة)", "Délégataire privé": "مفوَّض خاص", "En panne": "معطل", "En panne ou en difficulté depuis le": "معطل أو به خلل منذ", "En service": "في الخدمة", "Enquêteur": "المحقق", "Enregistrement impossible (mémoire pleine ?). Exportez une sauvegarde, puis retirez des photos.": "تعذّر الحفظ (الذاكرة ممتلئة؟). صدّروا نسخة احتياطية ثم احذفوا بعض الصور.", "Enregistrer": "حفظ", "Exemple": "مثال", "Exporter et sauvegarder": "التصدير والحفظ", "Exporter pour Excel (CSV)": "تصدير إلى Excel (CSV)", "Exporter pour QGIS (GeoJSON)": "تصدير إلى QGIS (GeoJSON)", "Fiche supprimée.": "تم حذف البطاقة.", "Fiche {c}": "البطاقة {c}", "Fiche {c} enregistrée.": "تم حفظ البطاقة {c}.", "Fiches d'exemple retirées.": "تم حذف البطاقات التجريبية.", "Fichier enregistré.": "تم حفظ الملف.", "Fichier illisible : {f}": "ملف غير مقروء: {f}", "Filtration": "ترشيح", "Financement ou projet": "التمويل أو المشروع", "Fonctionnalité": "نسبة التشغيل", "Fonctionnel": "يعمل", "Fonctionnel avec problème": "يعمل مع خلل", "Fonctionnels sans problème": "تعمل دون خلل", "Forage motorisé (solaire ou thermique)": "بئر ارتوازي بمضخة آلية (شمسية أو حرارية)", "Forage équipé de pompe manuelle": "بئر ارتوازي بمضخة يدوية", "Forages, puits, réseaux d'eau et abreuvoirs : état, localisation et suivi des visites": "الآبار الارتوازية والآبار وشبكات المياه ومشارب الماشية: الحالة والموقع ومتابعة الزيارات", "Gravitaire": "بالجاذبية", "Historique des visites": "سجل الزيارات", "Humain": "بشري", "Humain et animal": "بشري وحيواني", "Ignorer": "تجاهل", "Il n'y a plus de fiches d'exemple.": "لم تعد هناك بطاقات تجريبية.", "Image illisible.": "صورة غير مقروءة.", "Importer des sauvegardes d'autres équipes (fichiers JSON)": "استيراد نسخ احتياطية من فرق أخرى (ملفات JSON)", "Inclure le nom et le téléphone des gestionnaires dans les fichiers Excel et QGIS (données personnelles : à ne partager qu'avec le maître d'ouvrage)": "إدراج اسم المسيّرين وهواتفهم في ملفات Excel وQGIS (بيانات شخصية: لا تُشارك إلا مع صاحب المشروع)", "Inconnu": "غير معروف", "Installer": "تثبيت", "Inventaire des ouvrages hydrauliques": "جرد المنشآت المائية", "Je suis sur place : enregistrer une visite de terrain dans l'historique": "أنا في الموقع: تسجيل زيارة ميدانية في السجل", "Jours de panne": "أيام العطل", "La personne a accepté que son nom et son téléphone soient enregistrés pour le suivi de l'ouvrage": "وافق الشخص على تسجيل اسمه وهاتفه لمتابعة المنشأة", "Latitude (degrés décimaux, ex. 17.06)": "خط العرض (درجات عشرية، مثال 17.06)", "Le GPS est bloqué dans cette version de démonstration. Utilisez la version installable, ou saisissez les coordonnées.": "نظام GPS معطل في هذه النسخة التجريبية. استعملوا النسخة القابلة للتثبيت أو أدخلوا الإحداثيات يدويًا.", "Le nom et le téléphone du gestionnaire ne sont enregistrés qu'avec son accord, coché dans la fiche. Ils sont exclus par défaut des exports Excel et QGIS.": "لا يُسجَّل اسم المسيّر وهاتفه إلا بموافقته، مع التأشير عليها في البطاقة. وهما مستبعدان افتراضيًا من ملفات Excel وQGIS.", "Les données restent sur l'appareil. Protégez le téléphone par un code et ne transmettez les sauvegardes qu'aux personnes autorisées.": "تبقى البيانات على الجهاز. احموا الهاتف برمز سري ولا ترسلوا النسخ الاحتياطية إلا للأشخاص المخولين.", "Les fiches sont conservées dans ce navigateur, sur cet appareil uniquement. Faites une sauvegarde complète chaque soir et envoyez-la au coordinateur.": "تُحفظ البطاقات في هذا المتصفح، على هذا الجهاز فقط. أجروا نسخة احتياطية كاملة كل مساء وأرسلوها إلى المنسق.", "Localisation": "الموقع", "Localisation indisponible sur cet appareil : saisissez les coordonnées lues sur un GPS.": "تحديد الموقع غير متاح على هذا الجهاز: أدخلوا الإحداثيات المقروءة من جهاز GPS.", "Localité": "القرية أو التجمع", "Longitude (négative à l'ouest, ex. -13.91)": "خط الطول (سالب غربًا، مثال -13.91)", "Manuelle (puisette, poulie)": "يدوي (دلو، بكرة)", "Maraîchage": "زراعة الخضروات", "Mare ou retenue": "بركة أو سد", "Mini-réseau d'eau potable": "شبكة صغيرة لمياه الشرب", "Mixte (tous usages)": "مختلط (كل الاستعمالات)", "Mode d'exhaure": "طريقة الاستخراج", "Mode de gestion": "طريقة التسيير", "Moughataa": "المقاطعة", "N": "ش", "Niveau statique (m sous le sol)": "المستوى الساكن (م تحت سطح الأرض)", "Nom de l'enquêteur par défaut": "اسم المحقق الافتراضي", "Nom du gestionnaire ou du responsable": "اسم المسيّر أو المسؤول", "Nom local": "الاسم المحلي", "Nombre de points de distribution": "عدد نقاط التوزيع", "Non analysée": "غير محللة", "Non renseignée": "غير محددة", "Nouvel ouvrage": "منشأة جديدة", "Nouvelle fiche": "بطاقة جديدة", "O": "غ", "Observations": "ملاحظات", "Odeur ou goût": "رائحة أو طعم", "Ouvrages": "المنشآت", "Ouvrir la fiche": "فتح البطاقة", "Par type d'ouvrage": "حسب نوع المنشأة", "Par wilaya": "حسب الولاية", "Pas de photo": "لا صورة", "Personnes": "الأشخاص", "Photo {n} de l'ouvrage": "صورة المنشأة {n}", "Photographiez l'ouvrage, pas les personnes. Évitez les visages reconnaissables, surtout ceux des enfants.": "صوّروا المنشأة لا الأشخاص. تجنبوا الوجوه الواضحة، خاصة وجوه الأطفال.", "Photos et observations": "الصور والملاحظات", "Pompe manuelle": "مضخة يدوية", "Pompe solaire": "مضخة شمسية", "Pompe thermique": "مضخة حرارية", "Population": "السكان", "Population : chiffres déclarés par fiche. Si plusieurs ouvrages desservent la même localité, une même population peut être comptée deux fois. Valeur indicative.": "السكان: أرقام مصرّح بها في كل بطاقة. إذا كانت عدة منشآت تخدم القرية نفسها فقد يُحسب السكان أنفسهم مرتين. قيمة تقريبية.", "Population desservie": "السكان المستفيدون", "Population desservie (déclarée)": "السكان المستفيدون (مصرّح به)", "Position introuvable : réessayez à découvert ou saisissez les coordonnées.": "تعذّر تحديد الموقع: أعيدوا المحاولة في مكان مكشوف أو أدخلوا الإحداثيات.", "Position relevée (précision {m} m).": "تم تحديد الموقع (الدقة {m} م).", "Position relevée, mais peu précise ({m} m). Attendez quelques secondes et relevez à nouveau.": "تم تحديد الموقع لكن بدقة ضعيفة ({m} م). انتظروا بضع ثوانٍ ثم أعيدوا التحديد.", "Prendre une photo": "التقاط صورة", "Privé (propriétaire)": "خاص (المالك)", "Problème ou cause de la panne": "المشكلة أو سبب العطل", "Profondeur totale (m)": "العمق الكلي (م)", "Protection des données personnelles": "حماية البيانات الشخصية", "Précision du dernier relevé : {m} m": "دقة آخر تحديد: {m} م", "Puits cimenté": "بئر مبطنة بالإسمنت", "Puits traditionnel": "بئر تقليدية", "Qualité de l'eau (constat)": "جودة المياه (معاينة)", "Recherche": "بحث", "Recherche de la position… restez à découvert, près de l'ouvrage.": "جارٍ تحديد الموقع… ابقوا في مكان مكشوف قرب المنشأة.", "Relever la position GPS": "تحديد الموقع بنظام GPS", "Reprendre": "استئناف", "Retirer": "حذف", "Retirer les fiches d'exemple": "حذف البطاقات التجريبية", "Réglages de l'équipe": "إعدادات الفريق", "Réparations prioritaires": "إصلاحات ذات أولوية", "Réseau électrique": "الشبكة الكهربائية", "Salée ou saumâtre": "مالحة أو شبه مالحة", "Sans objet": "لا ينطبق", "Sans visite depuis 6 mois": "دون زيارة منذ 6 أشهر", "Sauvegarde complète avec photos": "نسخة احتياطية كاملة مع الصور", "Service public de l'eau": "مرفق عمومي للمياه", "Stockage indisponible sur cet appareil : les fiches seront perdues à la fermeture de la page. Exportez une sauvegarde avant de quitter.": "التخزين غير متاح على هذا الجهاز: ستضيع البطاقات عند إغلاق الصفحة. صدّروا نسخة احتياطية قبل المغادرة.", "Supprimer": "حذف", "Tableau": "اللوحة", "Tarif de l'eau appliqué": "تعرفة المياه المطبقة", "Taux de fonctionnalité": "نسبة التشغيل", "Taux de fonctionnalité = ouvrages fonctionnels, avec ou sans problème, rapportés aux ouvrages non abandonnés dont l'état est renseigné.": "نسبة التشغيل = المنشآت العاملة، مع خلل أو بدونه، مقسومة على المنشآت غير المهجورة ذات الحالة المحددة.", "Touchez un point pour afficher l'ouvrage.": "المسوا نقطة لعرض المنشأة.", "Toute la Mauritanie": "كل موريتانيا", "Traction animale": "جرّ حيواني", "Traitement de l'eau": "معالجة المياه", "Turbide": "عكرة", "Type": "النوع", "Type d'ouvrage": "نوع المنشأة", "Téléchargement impossible ici.": "التنزيل غير ممكن هنا.", "Téléphone du gestionnaire": "هاتف المسيّر", "Une saisie non enregistrée de cette fiche existe ({d}). La reprendre ?": "توجد بيانات غير محفوظة لهذه البطاقة ({d}). هل تريدون استئنافها؟", "Usage et gestion": "الاستعمال والتسيير", "Usage principal": "الاستعمال الرئيسي", "Version 2.0 du 19 novembre 2026": "النسخة 2.0 بتاريخ 19 نوفمبر 2026", "Version de démonstration : dans cette page, le GPS et le fonctionnement sans réseau sont bloqués. Pour le terrain, utilisez la version installable.": "نسخة تجريبية: في هذه الصفحة، نظام GPS والعمل دون شبكة غير متاحين. للعمل الميداني استعملوا النسخة القابلة للتثبيت.", "Visite de routine": "زيارة روتينية", "Wilaya": "الولاية", "Zone des ouvrages": "منطقة المنشآت", "accord du gestionnaire": "موافقة المسيّر", "année": "السنة", "attribué à l'enregistrement": "يُمنح عند الحفظ", "code": "الرمز", "date de panne": "تاريخ العطل", "date de visite": "تاريخ الزيارة", "date future": "تاريخ مستقبلي", "débit": "الصبيب", "déjà utilisé": "مستعمل من قبل", "ex. EQ1": "مثال EQ1", "ex. prix par bidon ou par m³, en MRU": "مثال: السعر للبرميل أو للمتر المكعب، بالأوقية", "hors de Mauritanie : la longitude doit être négative": "خارج موريتانيا: يجب أن يكون خط الطول سالبًا", "latitude": "خط العرض", "localité": "القرية", "longitude": "خط الطول", "niveau statique": "المستوى الساكن", "obligatoire pour enregistrer un nom ou un téléphone": "إلزامية لتسجيل اسم أو هاتف", "ouvrages à revisiter": "منشآت يجب زيارتها", "points de distribution": "نقاط التوزيع", "population": "السكان", "profondeur": "العمق", "stockage": "التخزين", "supérieur à la profondeur": "أكبر من العمق", "sur {p} déclarées": "من أصل {p} مصرّح بهم", "type d'ouvrage": "نوع المنشأة", "téléphone": "الهاتف", "valeur négative": "قيمة سالبة", "vu le {d}": "زيارة {d}", "wilaya": "الولاية", "{a} ouvrage(s) ajouté(s), {u} mis à jour.": "أُضيفت {a} منشأة، وحُدّثت {u}.", "{a} ouvrages en service sur {b}, hors abandonnés": "{a} منشأة في الخدمة من أصل {b}، دون المهجورة", "{a} ouvrages sur {b}": "{a} منشأة من أصل {b}", "{n} ligne(s) ignorée(s).": "تم تجاهل {n} سطر.", "{n} pers.": "{n} شخص", "{n} personnes desservies": "{n} شخص مستفيد", "{n} sans coordonnées": "{n} دون إحداثيات", "{p} personnes concernées · {n} depuis plus de 30 jours": "{p} شخص متأثر · {n} منذ أكثر من 30 يومًا", "À compléter ou corriger : ": "يجب إكمال أو تصحيح: ", "État": "الحالة", "État du parc": "حالة المنشآت", "État et visite": "الحالة والزيارة", "État non renseigné": "حالة غير محددة", "état": "الحالة", "Toutes les wilayas": "كل الولايات", "Tous les types": "كل الأنواع", "Tous les états": "كل الحالات", "nombre invalide": "رقم غير صالح", "à saisir avec l'autre coordonnée": "يجب إدخاله مع الإحداثية الأخرى", "nombre entier positif": "عدد صحيح موجب", "entre 1950 et l'année en cours": "بين 1950 والسنة الجارية"};
+function t(s,v){let r=(LANG==='ar'&&AR[s])||s;if(v)for(const k in v)r=r.split('{'+k+'}').join(v[k]);return r}
+function applyI18n(){
+  document.documentElement.lang=LANG;document.documentElement.dir=LANG==='ar'?'rtl':'ltr';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{if(el.dataset.fr===undefined)el.dataset.fr=el.textContent.trim();el.textContent=t(el.dataset.fr)});
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{if(el.dataset.frph===undefined)el.dataset.frph=el.placeholder;el.placeholder=t(el.dataset.frph)});
+  $('bLang').textContent=LANG==='ar'?'Français':'العربية';$('bLang').lang=LANG==='ar'?'fr':'ar';
+  document.title=t('Inventaire des ouvrages hydrauliques');
+  $('map').setAttribute('aria-label',t('Carte schématique des ouvrages'));
+}
+$('bLang').onclick=()=>{
+  const onForm=CUR&&$('v-fiche').classList.contains('on');if(onForm)readForm();
+  LANG=LANG==='ar'?'fr':'ar';LS.set('nibras-inv-lang',LANG);applyI18n();
+  buildForm();if(onForm)fillForm();refreshFilters(true);route();
+};
+
+/* ---------- référentiels ---------- */
+const WIL={'Adrar':'ADR','Assaba':'ASS','Brakna':'BRA','Dakhlet Nouadhibou':'DNO','Gorgol':'GOR','Guidimakha':'GUI','Hodh Ech Chargui':'HEC','Hodh El Gharbi':'HEG','Inchiri':'INC','Nouakchott-Nord':'NKN','Nouakchott-Ouest':'NKO','Nouakchott-Sud':'NKS','Tagant':'TAG','Tiris Zemmour':'TZE','Trarza':'TRA'};
+const TYPES=['Forage équipé de pompe manuelle','Forage motorisé (solaire ou thermique)','Puits cimenté','Puits traditionnel','Mini-réseau d\'eau potable','Borne-fontaine','Abreuvoir','Château d\'eau','Mare ou retenue','Autre'];
+const ETATS={F:'Fonctionnel',P:'Fonctionnel avec problème',X:'En panne',A:'Abandonné'};
+const ECOL={F:'var(--ok)',P:'var(--warn)',X:'var(--bad)',A:'var(--off)'};
+const EXHAURE=['Manuelle (puisette, poulie)','Traction animale','Pompe manuelle','Pompe solaire','Pompe thermique','Réseau électrique','Gravitaire','Sans objet'];
+const QUAL=['Bonne','Salée ou saumâtre','Turbide','Odeur ou goût','Non analysée'];
+const TRAIT=['Aucun','Chloration','Filtration','Autre','Inconnu'];
+const GEST=['Comité de gestion','Délégataire privé','Commune','Service public de l\'eau','Privé (propriétaire)','Aucun'];
+const USAGES=['Humain','Animal','Humain et animal','Maraîchage','Mixte (tous usages)'];
+const FIELDS=['code','codeNat','nom','type','etat','cause','panneDepuis','wilaya','moughataa','commune','localite','lat','lon','gpsAcc','annee','financement','profondeur','ns','debit','stockage','exhaure','qualite','traitement','usage','pop','nbPoints','gestionnaire','tarif','gestNom','gestTel','gestConsent','enqueteur','obs'];
+const NUMS=['lat','lon','gpsAcc','annee','profondeur','ns','debit','stockage','pop','nbPoints'];
+
+/* ---------- stockage IndexedDB avec repli signalé ---------- */
+const DB={db:null,mem:[],
+  async open(){try{this.db=await new Promise((res,rej)=>{const r=indexedDB.open('nibras-inventaire',1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('ouvrages'))r.result.createObjectStore('ouvrages',{keyPath:'id'})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))})}catch(e){this.db=null}
+    try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}catch(e){}},
+  async all(){if(!this.db)return this.mem.slice();return new Promise(res=>{try{const t=this.db.transaction('ouvrages').objectStore('ouvrages').getAll();t.onsuccess=()=>res(t.result||[]);t.onerror=()=>res([])}catch(e){res([])}})},
+  async put(o){if(!this.db){const i=this.mem.findIndex(x=>x.id===o.id);if(i>=0)this.mem[i]=o;else this.mem.push(o);return}return new Promise((res,rej)=>{const t=this.db.transaction('ouvrages','readwrite');t.objectStore('ouvrages').put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);t.onabort=()=>rej(t.error)})},
+  async del(id){if(!this.db){this.mem=this.mem.filter(x=>x.id!==id);return}return new Promise(res=>{const t=this.db.transaction('ouvrages','readwrite');t.objectStore('ouvrages').delete(id);t.oncomplete=res;t.onerror=res})}
+};
+let O=[];
+
+/* normalisation (anciennes fiches et imports) */
+const PHOTO_RE=/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/;
+const DATE_RE=/^\d{4}-\d{2}-\d{2}$/;
+function norm(src){
+  if(!src||typeof src!=='object')return null;
+  const id=String(src.id||'').slice(0,64);if(!/^[A-Za-z0-9_-]+$/.test(id))return null;
+  const o={id,ex:!!src.ex};
+  FIELDS.forEach(k=>{const v=src[k];o[k]=k==='gestConsent'?!!v:(v==null?'':String(v).slice(0,2000))});
+  if(!ETATS[o.etat])o.etat='';
+  if(o.gestionnaire==='ONSER ou service public')o.gestionnaire='Service public de l\'eau';
+  if(!o.gestConsent){o.gestNom='';o.gestTel=''}
+  let ph=Array.isArray(src.photos)?src.photos:(src.photo?[src.photo]:[]);
+  o.photos=ph.filter(p=>typeof p==='string'&&PHOTO_RE.test(p)).slice(0,3);
+  o.visites=(Array.isArray(src.visites)?src.visites:[]).filter(v=>v&&DATE_RE.test(v.date)).map(v=>({date:v.date,etat:ETATS[v.etat]?v.etat:'',obs:String(v.obs||'').slice(0,500),agent:String(v.agent||'').slice(0,100)})).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  o.maj=typeof src.maj==='string'?src.maj:'';o.cree=typeof src.cree==='string'?src.cree:o.maj;
+  return o;
+}
+
+function exemples(){
+  const d=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.getFullYear()+'-'+pad2(x.getMonth()+1)+'-'+pad2(x.getDate())};
+  const L=[
+    ['Brakna','Aleg','Aleg','Aleg Nord',17.06,-13.91,'Forage motorisé (solaire ou thermique)','F','Pompe solaire',2016,85,32,6,'Bonne','Délégataire privé',2400,'Humain et animal','',''],
+    ['Brakna','Magta-Lahjar','Magta-Lahjar','Lekhcheb',17.52,-13.08,'Forage équipé de pompe manuelle','X','Pompe manuelle',2011,60,28,1.2,'Bonne','Comité de gestion',650,'Humain','Tringlerie cassée, pièces non disponibles localement',95],
+    ['Brakna','Bababé','Bababé','Dioud',16.34,-13.95,'Puits cimenté','P','Manuelle (puisette, poulie)',2008,22,14,'','Turbide','Comité de gestion',400,'Humain et animal','Margelle fissurée',''],
+    ['Gorgol','Kaédi','Kaédi','Kaédi Est',16.15,-13.49,'Mini-réseau d\'eau potable','F','Réseau électrique',2019,110,40,12,'Bonne','Service public de l\'eau',5200,'Humain','',''],
+    ['Gorgol','M\'Bout','M\'Bout','Foum Gleita',16.12,-12.62,'Abreuvoir','X','Pompe thermique',2014,70,35,4,'Salée ou saumâtre','Comité de gestion',0,'Animal','Moteur en panne depuis la dernière saison sèche',210],
+    ['Assaba','Kiffa','Kiffa','Kiffa Sud',16.61,-11.41,'Forage motorisé (solaire ou thermique)','P','Pompe solaire',2020,95,48,5,'Bonne','Délégataire privé',3100,'Humain et animal','Deux panneaux à remplacer',''],
+    ['Assaba','Guerou','Guerou','Guerou',16.81,-11.83,'Château d\'eau','F','Gravitaire',2017,'','','','Bonne','Commune',1800,'Humain','',''],
+    ['Brakna','Boghé','Boghé','Dar El Barka',16.62,-14.27,'Puits traditionnel','A','Manuelle (puisette, poulie)',1998,18,12,'','Salée ou saumâtre','Aucun',0,'Animal','Ensablé','']
+  ];
+  return L.map((r,i)=>{const [wilaya,moughataa,commune,localite,lat,lon,type,etat,exhaure,annee,profondeur,ns,debit,qualite,gestionnaire,pop,usage,cause,panne]=r;
+    return norm({id:'ex'+i,ex:true,code:WIL[wilaya]+'-'+String(i+1).padStart(3,'0'),wilaya,moughataa,commune,localite,lat,lon,type,etat,exhaure,annee,profondeur,ns,debit,qualite,gestionnaire,pop,usage,cause,panneDepuis:panne?d(panne):'',financement:'Exemple',obs:'Fiche d\'exemple',visites:[{date:d(30+i*25),etat,obs:cause}],maj:new Date().toISOString()})});
+}
+
+/* ---------- navigation ---------- */
+const VIEWS=['tableau','ouvrages','carte','fiche'];
+function route(){
+  const h=location.hash.slice(1);const v=VIEWS.includes(h)?h:'tableau';
+  VIEWS.forEach(x=>$('v-'+x).classList.toggle('on',x===v));
+  document.querySelectorAll('nav.tabs a').forEach(a=>{if(a.dataset.v===v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  $('savebar').hidden=v!=='fiche';
+  if(v==='tableau')renderDash(); if(v==='ouvrages')renderList(); if(v==='carte')renderMap();
+  if(v==='fiche'&&!CUR)openForm(null);
+}
+window.addEventListener('hashchange',route);
+document.querySelector('nav a[data-v="fiche"]').addEventListener('click',()=>{if(CUR&&CUR.id){CUR=null}if(location.hash==='#fiche'&&!CUR)setTimeout(route,0)});
+
+/* ---------- filtres ---------- */
+function fillSelect(id,arr,all){$(id).innerHTML=`<option value="">${esc(t(all))}</option>`+arr.map(x=>Array.isArray(x)?`<option value="${esc(x[0])}">${esc(t(x[1]))}</option>`:`<option value="${esc(x)}">${esc(t(x))}</option>`).join('')}
+function wilayasPresentes(){return [...new Set(O.map(o=>o.wilaya).filter(Boolean))].sort()}
+function refreshFilters(force){
+  const w=wilayasPresentes();
+  ['dWil','lWil','mWil'].forEach(id=>{const v=$(id).value;fillSelect(id,w,'Toutes les wilayas');$(id).value=w.includes(v)?v:''});
+  if(force||!$('lType').options.length){const a=$('lType').value,b=$('lEtat').value;fillSelect('lType',TYPES,'Tous les types');fillSelect('lEtat',Object.entries(ETATS),'Tous les états');$('lType').value=a;$('lEtat').value=b}
+  $('nb').textContent=O.length?'('+O.length+')':'';
+}
+const etatPill=e=>`<span class="pill e-${ETATS[e]?e:''}">${esc(ETATS[e]?t(ETATS[e]):'—')}</span>`;
+const lastVisit=o=>{const v=last(o.visites);return v?v.date:''};
+function dupCodes(){const m={};O.forEach(o=>{if(o.code)m[o.code]=(m[o.code]||0)+1});return m}
+
+/* ---------- tableau de bord ---------- */
+function renderDash(){
+  const w=$('dWil').value, l=O.filter(o=>!w||o.wilaya===w), N=l.length;
+  if(!N){$('dash').innerHTML=`<p class="empty">${esc(t('Aucun ouvrage enregistré. Créez une fiche dans « Nouvelle fiche ».'))}</p>`;return}
+  const c=k=>l.filter(o=>o.etat===k).length, F=c('F'),P=c('P'),X=c('X'),A=c('A');
+  const base=l.filter(o=>o.etat&&o.etat!=='A').length, taux=base?(F+P)/base*100:0, tauxF=base?F/base*100:0;
+  const sum=a=>a.reduce((s,o)=>s+(+o.pop||0),0);
+  const pop=sum(l.filter(o=>o.etat!=='A')), popOk=sum(l.filter(o=>o.etat==='F'||o.etat==='P'));
+  const pannes=l.filter(o=>o.etat==='X').sort((a,b)=>(+b.pop||0)-(+a.pop||0)||((daysSince(b.panneDepuis)||0)-(daysSince(a.panneDepuis)||0)));
+  const lim=new Date();lim.setMonth(lim.getMonth()-6);const limS=lim.getFullYear()+'-'+pad2(lim.getMonth()+1)+'-'+pad2(lim.getDate());
+  const anciennes=l.filter(o=>o.etat!=='A'&&lastVisit(o)<limS).length;
+  const longues=pannes.filter(o=>(daysSince(o.panneDepuis)||0)>30).length;
+  const nEx=l.filter(o=>o.ex).length;
+  const byW={};l.forEach(o=>{const k=o.wilaya||'Non renseignée';(byW[k]=byW[k]||[]).push(o)});
+  const byT={};l.forEach(o=>{const k=o.type||'Autre';(byT[k]=byT[k]||[]).push(o)});
+  const row=(k,a)=>{const b=a.filter(o=>o.etat&&o.etat!=='A').length,ok=a.filter(o=>o.etat==='F'||o.etat==='P').length;return `<tr><td>${esc(t(k))}</td><td class="n">${a.length}</td><td class="n">${ok}</td><td class="n">${a.filter(o=>o.etat==='X').length}</td><td class="n">${b?f0.format(ok/b*100)+' %':'—'}</td><td class="n">${f0.format(sum(a.filter(o=>o.etat!=='A')))}</td></tr>`};
+  const th=`<thead><tr><th>{h}</th><th class="n">${esc(t('Ouvrages'))}</th><th class="n">${esc(t('En service'))}</th><th class="n">${esc(t('En panne'))}</th><th class="n">${esc(t('Fonctionnalité'))}</th><th class="n">${esc(t('Population'))}</th></tr></thead>`;
+  $('dash').innerHTML=`
+  ${nEx?`<div class="banner">${esc(t('Attention : {n} fiche(s) d\'exemple sont incluses dans ces chiffres. Retirez-les dans « Ouvrages » avant tout rapport.',{n:nEx}))}</div>`:''}
+  <div class="kpis">
+    <div class="kpi main"><div class="k">${esc(t('Taux de fonctionnalité'))}</div><div class="v">${f0.format(taux)} %</div><div class="s">${esc(t('{a} ouvrages en service sur {b}, hors abandonnés',{a:F+P,b:base}))}</div></div>
+    <div class="kpi"><div class="k">${esc(t('Fonctionnels sans problème'))}</div><div class="v">${f0.format(tauxF)} %</div><div class="s">${esc(t('{a} ouvrages sur {b}',{a:F,b:base}))}</div></div>
+    <div class="kpi"><div class="k">${esc(t('En panne'))}</div><div class="v" style="color:var(--bad)">${X}</div><div class="s">${esc(t('{p} personnes concernées · {n} depuis plus de 30 jours',{p:f0.format(sum(pannes)),n:longues}))}</div></div>
+    <div class="kpi"><div class="k">${esc(t('Population desservie'))}</div><div class="v">${f0.format(popOk)}</div><div class="s">${esc(t('sur {p} déclarées',{p:f0.format(pop)}))}</div></div>
+    <div class="kpi"><div class="k">${esc(t('Sans visite depuis 6 mois'))}</div><div class="v">${anciennes}</div><div class="s">${esc(t('ouvrages à revisiter'))}</div></div>
+  </div>
+  <div class="block"><h2>${esc(t('État du parc'))}</h2>
+    <div class="bar" role="img" aria-label="${esc(t('État du parc'))}">${[['F',F],['P',P],['X',X],['A',A]].map(([k,v])=>v?`<div style="width:${v/N*100}%;background:${ECOL[k]}"></div>`:'').join('')}</div>
+    <div class="legend">${[['F',F],['P',P],['X',X],['A',A]].map(([k,v])=>`<span><i style="background:${ECOL[k]}"></i>${esc(t(ETATS[k]))} : ${v}</span>`).join('')}${N-F-P-X-A?`<span>${esc(t('État non renseigné'))} : ${N-F-P-X-A}</span>`:''}</div></div>
+  <div class="block"><h2>${esc(t('Réparations prioritaires'))}</h2>
+    ${pannes.length?`<div class="table-wrap"><table><thead><tr><th>${esc(t('Code'))}</th><th>${esc(t('Localité'))}</th><th>${esc(t('Type'))}</th><th class="n">${esc(t('Personnes'))}</th><th class="n">${esc(t('Jours de panne'))}</th><th>${esc(t('Cause'))}</th></tr></thead><tbody>${pannes.map(o=>{const j=daysSince(o.panneDepuis);return `<tr data-open="${esc(o.id)}" tabindex="0"><td>${esc(o.code)}</td><td>${esc(o.localite)}</td><td>${esc(t(o.type))}</td><td class="n">${f0.format(+o.pop||0)}</td><td class="n">${j==null?'—':f0.format(j)}</td><td>${esc(o.cause||'—')}</td></tr>`}).join('')}</tbody></table></div><p class="note">${esc(t('Classées par population touchée, puis par durée de panne. Touchez une ligne pour ouvrir la fiche.'))}</p>`:`<p class="empty">${esc(t('Aucun ouvrage en panne.'))}</p>`}</div>
+  <div class="block"><h2>${esc(t('Par wilaya'))}</h2><div class="table-wrap"><table>${th.replace('{h}',esc(t('Wilaya')))}<tbody>${Object.entries(byW).sort().map(([k,a])=>row(k,a)).join('')}</tbody></table></div></div>
+  <div class="block"><h2>${esc(t('Par type d\'ouvrage'))}</h2><div class="table-wrap"><table>${th.replace('{h}',esc(t('Type')))}<tbody>${Object.entries(byT).sort((a,b)=>b[1].length-a[1].length).map(([k,a])=>row(k,a)).join('')}</tbody></table></div></div>
+  <p class="note">${esc(t('Taux de fonctionnalité = ouvrages fonctionnels, avec ou sans problème, rapportés aux ouvrages non abandonnés dont l\'état est renseigné.'))}</p>
+  <p class="note">${esc(t('Population : chiffres déclarés par fiche. Si plusieurs ouvrages desservent la même localité, une même population peut être comptée deux fois. Valeur indicative.'))}</p>`;
+  document.querySelectorAll('#dash [data-open]').forEach(r=>{r.onclick=()=>openForm(r.dataset.open);r.onkeydown=e=>{if(e.key==='Enter')openForm(r.dataset.open)}});
+}
+
+/* ---------- liste ---------- */
+function filtered(){
+  const q=$('lQ').value.trim().toLowerCase(),w=$('lWil').value,ty=$('lType').value,e=$('lEtat').value;
+  return O.filter(o=>(!w||o.wilaya===w)&&(!ty||o.type===ty)&&(!e||o.etat===e)&&(!q||[o.code,o.codeNat,o.nom,o.localite,o.commune,o.moughataa].join(' ').toLowerCase().includes(q)));
+}
+function renderList(){
+  const dup=dupCodes();
+  const l=filtered().sort((a,b)=>(a.code||'').localeCompare(b.code||''));
+  $('cards').innerHTML=l.length?l.map(o=>`<button class="card" data-open="${esc(o.id)}" type="button">
+    ${o.photos[0]?`<img class="thumb" src="${esc(o.photos[0])}" alt="">`:`<span class="thumb">${esc(t('Pas de photo'))}</span>`}
+    <span style="display:flex;flex-direction:column;gap:4px">
+      <span class="t"><b>${esc(o.code)}</b>${etatPill(o.etat)}${o.ex?`<span class="pill ex">${esc(t('Exemple'))}</span>`:''}${dup[o.code]>1?`<span class="pill dup">${esc(t('Code en double'))}</span>`:''}</span>
+      <span>${esc(t(o.type))}</span>
+      <span class="m">${esc([o.localite,o.commune,o.wilaya].filter(Boolean).join(' · '))}${o.pop?' · '+esc(t('{n} pers.',{n:f0.format(+o.pop)})):''}${lastVisit(o)?' · '+esc(t('vu le {d}',{d:lastVisit(o)})):''}</span>
+    </span></button>`).join(''):`<p class="empty">${esc(t(O.length?'Aucun ouvrage ne correspond aux filtres.':'Aucun ouvrage enregistré.'))}</p>`;
+  document.querySelectorAll('#cards [data-open]').forEach(b=>b.onclick=()=>openForm(b.dataset.open));
+  const lb=LS.get('nibras-inv-backup');
+  $('lastBackup').textContent=lb?t('Dernière sauvegarde complète sur cet appareil : {d}.',{d:lb}):t('Aucune sauvegarde complète faite sur cet appareil.');
+}
+['lQ','lWil','lType','lEtat'].forEach(id=>$(id).oninput=$(id).onchange=renderList);
+$('dWil').onchange=renderDash;
+
+/* ---------- réglages ---------- */
+const team=()=>(LS.get('nibras-inv-team')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+$('sTeam').value=team();$('sAgent').value=LS.get('nibras-inv-agent')||'';
+$('sTeam').onchange=()=>{const v=$('sTeam').value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);$('sTeam').value=v;LS.set('nibras-inv-team',v);toast(v?t('Code d\'équipe enregistré : {c}.',{c:v}):t('Code d\'équipe retiré.'))};
+$('sAgent').onchange=()=>{LS.set('nibras-inv-agent',$('sAgent').value.trim())};
+
+/* ---------- carte ---------- */
+const OUTLINE=[[-17.05,21.33],[-13.0,21.33],[-13.1,22.9],[-12.0,23.45],[-12.0,26.0],[-8.67,26.0],[-8.67,27.29],[-4.83,25.0],[-6.5,24.9],[-5.6,16.5],[-5.5,15.5],[-10.7,15.45],[-11.4,15.6],[-12.2,14.75],[-12.45,15.15],[-12.95,15.45],[-13.3,15.85],[-13.5,16.02],[-13.95,16.22],[-14.3,16.48],[-14.9,16.55],[-15.5,16.45],[-15.8,16.4],[-16.3,16.25],[-16.53,16.05],[-16.45,16.6],[-16.25,17.2],[-16.05,18.05],[-16.2,19.4],[-16.5,19.9],[-16.95,20.6],[-17.05,21.33]];
+const VILLES=[['Nouakchott',-15.98,18.09],['Nouadhibou',-17.03,20.94],['Kiffa',-11.4,16.62],['Néma',-7.26,16.62],['Zouérate',-12.47,22.73],['Atar',-13.05,20.52],['Kaédi',-13.5,16.15],['Aleg',-13.92,17.05]];
+let selId=null;
+const hasXY=o=>o.lat!==''&&o.lon!==''&&isFinite(+o.lat)&&isFinite(+o.lon);
+function renderMap(){
+  const w=$('mWil').value, l=O.filter(o=>(!w||o.wilaya===w)&&hasXY(o));
+  let x0=-17.4,x1=-4.5,y0=14.5,y1=27.5;
+  if($('mZoom').value==='pts'&&l.length){
+    const xs=l.map(o=>+o.lon),ys=l.map(o=>+o.lat);
+    x0=Math.min(...xs);x1=Math.max(...xs);y0=Math.min(...ys);y1=Math.max(...ys);
+    const pad=Math.max(.4,(x1-x0)*.15,(y1-y0)*.15);x0-=pad;x1+=pad;y0-=pad;y1+=pad;
+    const cx=(x0+x1)/2,cy=(y0+y1)/2,half=Math.max(x1-x0,y1-y0)/2;x0=cx-half;x1=cx+half;y0=cy-half;y1=cy+half;
+  }
+  const k=Math.cos((y0+y1)/2*Math.PI/180), W=600, H=Math.round(W*(y1-y0)/((x1-x0)*k));
+  const X=lon=>(lon-x0)/(x1-x0)*W, Y=lat=>(y1-lat)/(y1-y0)*H;
+  const span=x1-x0, step=span>8?2:span>3?1:span>1.2?.5:.2, r=Math.max(5,Math.min(9,W/60));
+  let g='';
+  for(let v=Math.ceil(x0/step)*step;v<=x1;v+=step)g+=`<line x1="${X(v)}" y1="0" x2="${X(v)}" y2="${H}"/><text x="${X(v)+3}" y="${H-4}" font-size="10">${fmt.format(Math.abs(v))}°${esc(t('O'))}</text>`;
+  for(let v=Math.ceil(y0/step)*step;v<=y1;v+=step)g+=`<line x1="0" y1="${Y(v)}" x2="${W}" y2="${Y(v)}"/><text x="3" y="${Y(v)-3}" font-size="10">${fmt.format(v)}°${esc(t('N'))}</text>`;
+  const land=OUTLINE.map(([a,b],i)=>(i?'L':'M')+X(a).toFixed(1)+' '+Y(b).toFixed(1)).join(' ')+'Z';
+  const villes=VILLES.filter(([,a,b])=>a>x0&&a<x1&&b>y0&&b<y1).map(([n,a,b])=>`<rect class="city" x="${X(a)-2.5}" y="${Y(b)-2.5}" width="5" height="5"/><text x="${X(a)+6}" y="${Y(b)+4}" font-size="11">${esc(n)}</text>`).join('');
+  const pts=l.map(o=>`<circle class="pt${o.id===selId?' sel':''}" data-id="${esc(o.id)}" cx="${X(+o.lon).toFixed(1)}" cy="${Y(+o.lat).toFixed(1)}" r="${r}" fill="${ECOL[o.etat]||'var(--off)'}"><title>${esc(o.code)} · ${esc(o.localite)}</title></circle>`).join('');
+  $('map').setAttribute('viewBox',`0 0 ${W} ${H}`);
+  $('map').innerHTML=`<path class="land" d="${land}"/><g class="grid">${g}</g>${villes}${pts}`;
+  const nW=O.filter(o=>!w||o.wilaya===w).length;
+  $('mLegend').innerHTML=Object.entries(ETATS).map(([k,tx])=>`<span><i style="background:${ECOL[k]}"></i>${esc(t(tx))} : ${l.filter(o=>o.etat===k).length}</span>`).join('')+`<span>${esc(t('{n} sans coordonnées',{n:nW-l.length}))}</span>`;
+  document.querySelectorAll('circle.pt').forEach(c=>c.onclick=()=>{selId=c.dataset.id;renderMap()});
+  showInfo();
+}
+function showInfo(){
+  const o=O.find(x=>x.id===selId);
+  $('mInfo').innerHTML=o?`<div style="display:flex;flex-direction:column;gap:6px"><div class="actions"><b>${esc(o.code)}</b>${etatPill(o.etat)}</div><div>${esc(t(o.type))} · ${esc([o.localite,o.commune].filter(Boolean).join(', '))} (${esc(o.wilaya)})</div><div class="note">${o.pop?esc(t('{n} personnes desservies',{n:f0.format(+o.pop)}))+' · ':''}${o.debit?fmt.format(+o.debit)+' m³/h · ':''}${esc(o.cause||'')}</div><div class="actions"><button type="button" data-open="${esc(o.id)}">${esc(t('Ouvrir la fiche'))}</button></div></div>`:`<p class="empty">${esc(t('Touchez un point pour afficher l\'ouvrage.'))}</p>`;
+  const b=$('mInfo').querySelector('[data-open]');if(b)b.onclick=()=>openForm(b.dataset.open);
+}
+$('mWil').onchange=renderMap;$('mZoom').onchange=renderMap;
+
+/* ---------- fiche ---------- */
+let CUR=null;
+const opts=a=>`<option value="">${esc(t('Choisir…'))}</option>`+a.map(x=>`<option value="${esc(x)}">${esc(t(x))}</option>`).join('');
+const L=(id,txt,inner,cls)=>`<label for="${id}"${cls?` class="${cls}"`:''}><span>${esc(t(txt))}</span>${inner}</label>`;
+const num=(id,extra)=>`<input id="${id}" name="${id}" class="num ltr" inputmode="decimal" autocomplete="off"${extra||''}>`;
+const txt=(id,extra)=>`<input id="${id}" name="${id}" autocomplete="off"${extra||''}>`;
+function buildForm(){
+  $('form').innerHTML=`
+  <fieldset><legend id="fTitle">${esc(t('Nouvel ouvrage'))}</legend>
+    <div class="grid">
+      ${L('code','Code de l\'ouvrage',txt('code',` class="ltr" placeholder="${esc(t('attribué à l\'enregistrement'))}"`))}
+      ${L('codeNat','Code national ou du projet (s\'il existe)',txt('codeNat',' class="ltr"'))}
+      ${L('type','Type d\'ouvrage',`<select id="type" name="type">${opts(TYPES)}</select>`,'req')}
+      ${L('nom','Nom local',txt('nom'))}
+    </div>
+  </fieldset>
+  <fieldset><legend>${esc(t('État et visite'))}</legend>
+    <div class="etats" id="etats" role="group" aria-label="${esc(t('État'))}">${Object.entries(ETATS).map(([k,tx])=>`<button type="button" class="${k}" data-etat="${k}" aria-pressed="false">${esc(t(tx))}</button>`).join('')}</div>
+    <div class="grid">
+      ${L('cause','Problème ou cause de la panne',txt('cause'))}
+      ${L('panneDepuis','En panne ou en difficulté depuis le',`<input id="panneDepuis" name="panneDepuis" type="date">`)}
+    </div>
+    <label class="chk" for="vrec" id="vrecL"><input id="vrec" name="vrec" type="checkbox"><span>${esc(t('Je suis sur place : enregistrer une visite de terrain dans l\'historique'))}</span></label>
+    <div class="grid">
+      ${L('vdate','Date de la visite',`<input id="vdate" name="vdate" type="date">`)}
+      ${L('enqueteur','Enquêteur',txt('enqueteur',' list="dl-enqueteur"'))}
+    </div>
+    <div class="visits" id="visits"></div>
+  </fieldset>
+  <fieldset><legend>${esc(t('Localisation'))}</legend>
+    <div class="grid">
+      ${L('wilaya','Wilaya',`<select id="wilaya" name="wilaya">${opts(Object.keys(WIL))}</select>`,'req')}
+      ${L('moughataa','Moughataa',txt('moughataa',' list="dl-moughataa"'))}
+      ${L('commune','Commune',txt('commune',' list="dl-commune"'))}
+      ${L('localite','Localité',txt('localite',' list="dl-localite"'),'req')}
+      ${L('lat','Latitude (degrés décimaux, ex. 17.06)',num('lat'))}
+      ${L('lon','Longitude (négative à l\'ouest, ex. -13.91)',num('lon'))}
+    </div>
+    <div class="actions"><button type="button" id="bGps">${esc(t('Relever la position GPS'))}</button><span class="hint" id="gpsInfo"></span></div>
+    <input type="hidden" id="gpsAcc" name="gpsAcc">
+  </fieldset>
+  <fieldset><legend>${esc(t('Caractéristiques techniques'))}</legend>
+    <div class="grid">
+      ${L('annee','Année de réalisation',num('annee',' inputmode="numeric" maxlength="4"'))}
+      ${L('financement','Financement ou projet',txt('financement',' list="dl-financement"'))}
+      ${L('profondeur','Profondeur totale (m)',num('profondeur'))}
+      ${L('ns','Niveau statique (m sous le sol)',num('ns'))}
+      ${L('debit','Débit d\'exploitation (m³/h)',num('debit'))}
+      ${L('stockage','Capacité de stockage (m³)',num('stockage'))}
+      ${L('exhaure','Mode d\'exhaure',`<select id="exhaure" name="exhaure">${opts(EXHAURE)}</select>`)}
+      ${L('qualite','Qualité de l\'eau (constat)',`<select id="qualite" name="qualite">${opts(QUAL)}</select>`)}
+      ${L('traitement','Traitement de l\'eau',`<select id="traitement" name="traitement">${opts(TRAIT)}</select>`)}
+    </div>
+  </fieldset>
+  <fieldset><legend>${esc(t('Usage et gestion'))}</legend>
+    <div class="grid">
+      ${L('usage','Usage principal',`<select id="usage" name="usage">${opts(USAGES)}</select>`)}
+      ${L('pop','Population desservie (déclarée)',num('pop',' inputmode="numeric"'))}
+      ${L('nbPoints','Nombre de points de distribution',num('nbPoints',' inputmode="numeric"'))}
+      ${L('gestionnaire','Mode de gestion',`<select id="gestionnaire" name="gestionnaire">${opts(GEST)}</select>`)}
+      ${L('tarif','Tarif de l\'eau appliqué',txt('tarif',` placeholder="${esc(t('ex. prix par bidon ou par m³, en MRU'))}"`))}
+    </div>
+    <div class="grid">
+      ${L('gestNom','Nom du gestionnaire ou du responsable',txt('gestNom'))}
+      ${L('gestTel','Téléphone du gestionnaire',`<input id="gestTel" name="gestTel" class="ltr" type="tel" inputmode="tel" autocomplete="off" placeholder="+222 ...">`)}
+    </div>
+    <label class="chk" for="gestConsent"><input id="gestConsent" name="gestConsent" type="checkbox"><span>${esc(t('La personne a accepté que son nom et son téléphone soient enregistrés pour le suivi de l\'ouvrage'))}</span></label>
+  </fieldset>
+  <fieldset><legend>${esc(t('Photos et observations'))}</legend>
+    <div class="photos" id="photos"></div>
+    <div class="actions" id="photoBtns">
+      <label class="filebtn" for="pCam">${esc(t('Prendre une photo'))}<input id="pCam" type="file" accept="image/*" capture="environment"></label>
+      <label class="filebtn" for="pGal">${esc(t('Choisir dans la galerie'))}<input id="pGal" type="file" accept="image/*"></label>
+      <span class="hint">${esc(t('3 photos au maximum. Photographiez l\'ouvrage, pas les personnes.'))}</span>
+    </div>
+    ${L('obs','Observations',`<textarea id="obs" name="obs"></textarea>`)}
+  </fieldset>
+  <datalist id="dl-moughataa"></datalist><datalist id="dl-commune"></datalist><datalist id="dl-localite"></datalist><datalist id="dl-financement"></datalist><datalist id="dl-enqueteur"></datalist>`;
+  document.querySelectorAll('[data-etat]').forEach(b=>b.onclick=()=>{CUR.etat=b.dataset.etat;syncEtat();$('etats').removeAttribute('aria-invalid');saveDraftSoon()});
+  $('bGps').onclick=gps;
+  $('pCam').onchange=addPhoto;$('pGal').onchange=addPhoto;
+  $('lat').addEventListener('paste',e=>{const s=(e.clipboardData||window.clipboardData).getData('text');const m=s&&s.match(/(-?\d+[.,]\d+)\s*[,;\s]\s*(-?\d+[.,]\d+)/);if(m){e.preventDefault();$('lat').value=m[1].replace(',','.');$('lon').value=m[2].replace(',','.');saveDraftSoon()}});
+  $('vrec').onchange=syncVisit;
+  $('form').addEventListener('input',e=>{if(e.target.hasAttribute('aria-invalid'))e.target.removeAttribute('aria-invalid');saveDraftSoon()});
+  $('form').addEventListener('change',saveDraftSoon);
+  $('form').addEventListener('submit',e=>e.preventDefault());
+}
+function fillDatalists(){
+  ['moughataa','commune','localite','financement','enqueteur'].forEach(k=>{const s=[...new Set(O.filter(o=>!o.ex).map(o=>o[k]).filter(Boolean))].sort().slice(0,300);const d=$('dl-'+k);if(d)d.innerHTML=s.map(x=>`<option value="${esc(x)}"></option>`).join('')});
+}
+function syncEtat(){document.querySelectorAll('[data-etat]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.etat===CUR.etat)))}
+function syncVisit(){const on=$('vrec').checked;$('vdate').disabled=!on}
+function showPhotos(){
+  const p=CUR.photos||[];
+  $('photos').innerHTML=p.map((s,i)=>`<figure><img src="${esc(s)}" alt="${esc(t('Photo {n} de l\'ouvrage',{n:i+1}))}"><button type="button" class="small ghost" data-pdel="${i}">${esc(t('Retirer'))}</button></figure>`).join('');
+  $('photos').querySelectorAll('[data-pdel]').forEach(b=>b.onclick=()=>{CUR.photos.splice(+b.dataset.pdel,1);showPhotos();saveDraftSoon()});
+  $('photoBtns').querySelectorAll('.filebtn').forEach(l=>l.hidden=p.length>=3);
+}
+function fillForm(){
+  [...$('form').elements].forEach(el=>{if(!el.name)return;
+    if(el.name==='vrec'){el.checked=!CUR.id;return}
+    if(el.name==='vdate'){el.value=today();return}
+    if(el.type==='checkbox'){el.checked=!!CUR[el.name];return}
+    el.value=CUR[el.name]??''});
+  if(!CUR.id&&!CUR.enqueteur)$('enqueteur').value=LS.get('nibras-inv-agent')||'';
+  $('fTitle').textContent=CUR.id?t('Fiche {c}',{c:CUR.code}):t('Nouvel ouvrage');
+  $('vrecL').hidden=!CUR.id;syncVisit();
+  $('gpsInfo').textContent=CUR.gpsAcc?t('Précision du dernier relevé : {m} m',{m:CUR.gpsAcc}):'';
+  $('visits').innerHTML=(CUR.visites||[]).length?`<h3>${esc(t('Historique des visites'))}</h3>`+CUR.visites.slice().reverse().map(v=>`<div><span>${esc(v.date)}</span>${etatPill(v.etat)}<span class="note">${esc(v.obs||t('Visite de routine'))}${v.agent?' · '+esc(v.agent):''}</span></div>`).join(''):'';
+  $('formMsg').textContent='';
+  syncEtat();showPhotos();fillDatalists();
+}
+function readForm(){[...$('form').elements].forEach(el=>{if(!el.name||el.name==='vdate'||el.name==='vrec')return;CUR[el.name]=el.type==='checkbox'?el.checked:el.value.trim()})}
+
+/* brouillon automatique : rien n'est perdu si le téléphone s'éteint ou si l'on change d'onglet */
+const DRAFT='nibras-inv-draft';let dT;
+function saveDraftSoon(){clearTimeout(dT);dT=setTimeout(saveDraft,500)}
+function saveDraft(){if(!CUR||!$('v-fiche').classList.contains('on'))return;readForm();const d={id:CUR.id,t:new Date().toISOString(),d:CUR};
+  if(!LS.set(DRAFT,JSON.stringify(d))){d.d={...CUR,photos:[]};d.np=1;LS.set(DRAFT,JSON.stringify(d))}}
+function getDraft(){try{return JSON.parse(LS.get(DRAFT)||'null')}catch(e){return null}}
+function clearDraft(){clearTimeout(dT);LS.del(DRAFT)}
+
+function openForm(id){
+  const o=id&&O.find(x=>x.id===id);
+  CUR=o?JSON.parse(JSON.stringify(o)):{id:null,etat:'',visites:[],photos:[]};
+  CUR._etat0=o?o.etat:null;
+  $('bDel').hidden=!o;delArm=0;
+  fillForm();
+  const d=getDraft();
+  $('draftBar').hidden=true;
+  if(d&&d.d&&(d.id||null)===(o?o.id:null)){
+    $('draftTxt').textContent=t('Une saisie non enregistrée de cette fiche existe ({d}). La reprendre ?',{d:String(d.t).slice(0,16).replace('T',' ')})+(d.np?' '+t('(photos non conservées)'):'');
+    $('draftBar').hidden=false;
+    $('bDraftYes').onclick=()=>{CUR=d.d;if(!CUR.photos)CUR.photos=[];if(!CUR.visites)CUR.visites=[];fillForm();$('draftBar').hidden=true};
+    $('bDraftNo').onclick=()=>{clearDraft();$('draftBar').hidden=true};
+  }
+  if(location.hash!=='#fiche')location.hash='fiche';else route();
+  window.scrollTo({top:0});
+}
+function gps(){
+  if(!navigator.geolocation){toast(t('Localisation indisponible sur cet appareil : saisissez les coordonnées lues sur un GPS.'));return}
+  toast(t('Recherche de la position… restez à découvert, près de l\'ouvrage.'));
+  $('bGps').disabled=true;
+  navigator.geolocation.getCurrentPosition(p=>{
+    $('bGps').disabled=false;
+    $('lat').value=p.coords.latitude.toFixed(5);$('lon').value=p.coords.longitude.toFixed(5);
+    const acc=Math.round(p.coords.accuracy);$('gpsAcc').value=String(acc);$('lat').removeAttribute('aria-invalid');$('lon').removeAttribute('aria-invalid');
+    $('gpsInfo').textContent=t('Précision du dernier relevé : {m} m',{m:acc});
+    toast(acc>50?t('Position relevée, mais peu précise ({m} m). Attendez quelques secondes et relevez à nouveau.',{m:acc}):t('Position relevée (précision {m} m).',{m:acc}));saveDraftSoon();
+  },err=>{
+    $('bGps').disabled=false;
+    toast(IN_FRAME?t('Le GPS est bloqué dans cette version de démonstration. Utilisez la version installable, ou saisissez les coordonnées.'):err&&err.code===1?t('Autorisez la localisation pour cette application dans les réglages du téléphone.'):t('Position introuvable : réessayez à découvert ou saisissez les coordonnées.'));
+  },{enableHighAccuracy:true,timeout:30000,maximumAge:0});
+}
+function addPhoto(ev){
+  const f=ev.target.files&&ev.target.files[0];ev.target.value='';if(!f)return;
+  if((CUR.photos||[]).length>=3)return toast(t('3 photos au maximum.'));
+  const img=new Image(),url=URL.createObjectURL(f);
+  img.onload=()=>{try{const m=1024,s=Math.min(1,m/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);CUR.photos.push(c.toDataURL('image/jpeg',.6));showPhotos();saveDraftSoon()}catch(e){toast(t('Image illisible.'))}URL.revokeObjectURL(url)};
+  img.onerror=()=>{URL.revokeObjectURL(url);toast(t('Image illisible.'))};img.src=url;
+}
+
+/* contrôles de saisie */
+const LBL={type:'type d\'ouvrage',etat:'état',wilaya:'wilaya',localite:'localité',lat:'latitude',lon:'longitude',annee:'année',profondeur:'profondeur',ns:'niveau statique',debit:'débit',stockage:'stockage',pop:'population',nbPoints:'points de distribution',code:'code',panneDepuis:'date de panne',vdate:'date de visite',gestTel:'téléphone',gestConsent:'accord du gestionnaire'};
+const toNum=s=>{s=String(s??'').trim().replace(/\s/g,'').replace(',','.');if(s==='')return null;return /^-?\d+(\.\d+)?$/.test(s)?+s:NaN};
+function validate(){
+  const E=[];const add=(k,why)=>E.push([k,t(LBL[k]||k)+(why?' ('+t(why)+')':'')]);
+  if(!CUR.type)add('type');if(!CUR.etat)add('etat');if(!CUR.wilaya)add('wilaya');if(!CUR.localite)add('localite');
+  const n={};NUMS.forEach(k=>{if(k==='gpsAcc')return;n[k]=toNum(CUR[k]);if(Number.isNaN(n[k]))add(k,'nombre invalide')});
+  if(n.lat!=null&&n.lon!=null&&!Number.isNaN(n.lat)&&!Number.isNaN(n.lon)){if(!(n.lat>=14.5&&n.lat<=27.5&&n.lon>=-17.2&&n.lon<=-4.7))add('lon','hors de Mauritanie : la longitude doit être négative')}
+  else if((n.lat==null)!==(n.lon==null))add(n.lat==null?'lat':'lon','à saisir avec l\'autre coordonnée');
+  const y=new Date().getFullYear();
+  if(n.annee!=null&&!Number.isNaN(n.annee)&&(n.annee<1950||n.annee>y||n.annee%1))add('annee','entre 1950 et l\'année en cours');
+  ['profondeur','debit','stockage'].forEach(k=>{if(n[k]!=null&&n[k]<0)add(k,'valeur négative')});
+  if(n.ns!=null&&n.ns<0)add('ns','valeur négative');
+  if(n.ns!=null&&n.profondeur!=null&&!Number.isNaN(n.ns)&&!Number.isNaN(n.profondeur)&&n.ns>n.profondeur)add('ns','supérieur à la profondeur');
+  ['pop','nbPoints'].forEach(k=>{if(n[k]!=null&&!Number.isNaN(n[k])&&(n[k]<0||n[k]%1))add(k,'nombre entier positif')});
+  if(CUR.panneDepuis&&CUR.panneDepuis>today())add('panneDepuis','date future');
+  if($('vrec').checked&&$('vdate').value&&$('vdate').value>today())add('vdate','date future');
+  if(CUR.gestTel){const d=CUR.gestTel.replace(/[\s.-]/g,'').replace(/^(\+|00)222/,'');if(!/^\d{8}$/.test(d))add('gestTel','8 chiffres')}
+  if((CUR.gestNom||CUR.gestTel)&&!CUR.gestConsent)add('gestConsent','obligatoire pour enregistrer un nom ou un téléphone');
+  if(CUR.code&&O.some(o=>o.id!==CUR.id&&o.code===CUR.code))add('code','déjà utilisé');
+  return {E,n};
+}
+function nextCode(w){const eq=team();const p=(WIL[w]||'OH')+(eq?'-'+eq:'');const re=new RegExp('^'+p+'-(\\d+)$');let m=0;O.forEach(o=>{const r=re.exec(o.code||'');if(r)m=Math.max(m,+r[1])});return p+'-'+String(m+1).padStart(3,'0')}
+async function save(){
+  if(!CUR)return;
+  readForm();CUR.code=CUR.code.toUpperCase().replace(/\s+/g,'');
+  document.querySelectorAll('#form [aria-invalid]').forEach(e=>e.removeAttribute('aria-invalid'));
+  const {E,n}=validate();
+  if(E.length){
+    $('formMsg').textContent=t('À compléter ou corriger : ')+E.map(e=>e[1]).join(', ')+'.';
+    E.forEach(([k])=>{const el=k==='etat'?$('etats'):$(k);if(el)el.setAttribute('aria-invalid','true')});
+    const f=E[0][0]==='etat'?$('etats'):$(E[0][0]);if(f){f.scrollIntoView({block:'center'});if(f.focus)f.focus({preventScroll:true})}
+    return;
+  }
+  NUMS.forEach(k=>{if(k!=='gpsAcc'&&n[k]!=null)CUR[k]=String(n[k])});
+  if(CUR.etat!=='X'&&CUR.etat!=='P')CUR.panneDepuis='';
+  if(!CUR.gestConsent){CUR.gestNom='';CUR.gestTel=''}
+  const isNew=!CUR.id;
+  if(isNew){CUR.id='o'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);CUR.visites=[];CUR.cree=new Date().toISOString()}
+  if(!CUR.code)CUR.code=nextCode(CUR.wilaya);
+  const vd=($('vrec').checked&&$('vdate').value)||today();
+  if(isNew||$('vrec').checked||CUR._etat0!==CUR.etat){
+    const v={date:vd,etat:CUR.etat,obs:CUR.cause||'',agent:CUR.enqueteur||''};
+    const i=CUR.visites.findIndex(x=>x.date===vd&&x.etat===v.etat);if(i>=0)CUR.visites[i]=v;else CUR.visites.push(v);
+    CUR.visites.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  }
+  const rec=norm({...CUR,ex:false,maj:new Date().toISOString()});
+  try{await DB.put(rec)}catch(e){toast(t('Enregistrement impossible (mémoire pleine ?). Exportez une sauvegarde, puis retirez des photos.'));return}
+  if(CUR.enqueteur)LS.set('nibras-inv-agent',CUR.enqueteur);
+  clearDraft();await reload(false);toast(t('Fiche {c} enregistrée.',{c:rec.code}));CUR=null;location.hash='ouvrages';
+}
+let delArm=0;
+async function del(){if(!CUR||!CUR.id)return;if(Date.now()-delArm>4000){delArm=Date.now();$('formMsg').textContent=t('Appuyez de nouveau sur « Supprimer » pour confirmer.');return}
+  await DB.del(CUR.id);clearDraft();await reload(false);toast(t('Fiche supprimée.'));CUR=null;location.hash='ouvrages'}
+$('bSave').onclick=save;$('bDel').onclick=del;$('bCancel').onclick=()=>{clearDraft();CUR=null;location.hash='ouvrages'};
+
+/* ---------- exports ---------- */
+const COLS=[['code','code'],['codeNat','code_national'],['nom','nom_local'],['type','type'],['etatL','etat'],['cause','cause'],['panneDepuis','en_panne_depuis'],['derniereVisite','derniere_visite'],['nbVisites','nb_visites'],['wilaya','wilaya'],['moughataa','moughataa'],['commune','commune'],['localite','localite'],['lat','latitude'],['lon','longitude'],['gpsAcc','precision_gps_m'],['annee','annee'],['financement','financement'],['profondeur','profondeur_m'],['ns','niveau_statique_m'],['debit','debit_m3h'],['stockage','stockage_m3'],['exhaure','exhaure'],['qualite','qualite_eau'],['traitement','traitement'],['usage','usage'],['pop','population'],['nbPoints','points_distribution'],['gestionnaire','mode_gestion'],['tarif','tarif'],['enqueteur','enqueteur'],['obs','observations'],['ex','exemple'],['maj','mise_a_jour']];
+const PERSO=[['gestNom','gestionnaire_nom'],['gestTel','gestionnaire_tel']];
+const NUMCOLS=new Set(['lat','lon','gpsAcc','annee','profondeur','ns','debit','stockage','pop','nbPoints','nbVisites']);
+function flat(o){return{...o,etatL:ETATS[o.etat]||'',derniereVisite:lastVisit(o),nbVisites:(o.visites||[]).length,ex:o.ex?'oui':'non'}}
+const cols=()=>$('xPerso').checked?COLS.concat(PERSO):COLS;
+let downloads=null;
+(async()=>{try{if(window.claude&&claude.use)downloads=await claude.use('downloads')}catch(e){}})();
+async function saveFile(name,data,mime){
+  if(downloads){try{await downloads.save({filename:name,data});toast(t('Fichier enregistré.'));return true}catch(e){if(!e||e.code!=='declined')toast(t('Téléchargement impossible ici.'));return false}}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast(t('Fichier enregistré.'));return true}catch(e){toast(t('Téléchargement impossible ici.'));return false}
+}
+const stamp=()=>today()+(team()?'_'+team():'');
+function csvCell(k,v){let s=String(v??'');if(NUMCOLS.has(k)&&s!==''&&isFinite(+s))return s.replace('.',',');if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}
+function toCSV(list){const C=cols();return '﻿'+[C.map(c=>c[1]).join(';'),...list.map(o=>{const f=flat(o);return C.map(([k])=>csvCell(k,f[k])).join(';')})].join('\r\n')}
+$('bCsv').onclick=()=>{if(!O.length)return toast(t('Aucun ouvrage à exporter.'));saveFile(`Inventaire_ouvrages_${stamp()}.csv`,toCSV(O),'text/csv')};
+function toGeo(list){const C=cols().filter(([k])=>k!=='lat'&&k!=='lon');return{type:'FeatureCollection',features:list.filter(hasXY).map(o=>{const f=flat(o);const p={};C.forEach(([k,h])=>{const v=f[k];p[h]=NUMCOLS.has(k)&&v!==''&&isFinite(+v)?+v:(v??'')});return{type:'Feature',geometry:{type:'Point',coordinates:[+o.lon,+o.lat]},properties:p}})}}
+$('bGeo').onclick=()=>{const gj=toGeo(O);if(!gj.features.length)return toast(t('Aucun ouvrage géolocalisé.'));saveFile(`Inventaire_ouvrages_${stamp()}${downloads?'.json':'.geojson'}`,JSON.stringify(gj),'application/geo+json')};
+$('bJson').onclick=async()=>{if(!O.length)return toast(t('Aucun ouvrage à sauvegarder.'));const ok=await saveFile(`Sauvegarde_inventaire_${stamp()}.json`,JSON.stringify({app:'nibras-inventaire',v:2,equipe:team(),date:new Date().toISOString(),ouvrages:O}),'application/json');if(ok){LS.set('nibras-inv-backup',new Date().toLocaleString('fr-FR'));renderList()}};
+function mergeVisits(a,b){const m={};[...(a||[]),...(b||[])].forEach(v=>{m[v.date+'|'+v.etat+'|'+v.obs]=v});return Object.values(m).sort((x,y)=>x.date<y.date?-1:x.date>y.date?1:0)}
+$('fImp').onchange=async ev=>{let a=0,u=0,bad=0;
+  for(const file of ev.target.files){try{const d=JSON.parse(await file.text());if(!d||!Array.isArray(d.ouvrages)){toast(t('Ce fichier n\'est pas une sauvegarde de l\'inventaire : {f}',{f:file.name}));continue}
+    for(const raw of d.ouvrages){const o=norm(raw);if(!o){bad++;continue}const ex=O.find(x=>x.id===o.id);
+      if(!ex){await DB.put(o);O.push(o);a++}else{const newer=(o.maj||'')>(ex.maj||'');const m=newer?{...o}:{...ex};m.visites=mergeVisits(ex.visites,o.visites);if(newer||m.visites.length!==ex.visites.length){await DB.put(m);u++}}}}catch(e){toast(t('Fichier illisible : {f}',{f:file.name}))}}
+  ev.target.value='';await reload(false);
+  const dup=Object.values(dupCodes()).filter(n=>n>1).length;
+  toast(t('{a} ouvrage(s) ajouté(s), {u} mis à jour.',{a,u})+(bad?' '+t('{n} ligne(s) ignorée(s).',{n:bad}):'')+(dup?' '+t('Attention : {n} code(s) en double à corriger.',{n:dup}):''))};
+let clrArm=0;
+$('bClearEx').onclick=async()=>{const ex=O.filter(o=>o.ex);if(!ex.length)return toast(t('Il n\'y a plus de fiches d\'exemple.'));if(Date.now()-clrArm>4000){clrArm=Date.now();return toast(t('Appuyez de nouveau pour retirer {n} fiche(s) d\'exemple.',{n:ex.length}))}
+  for(const o of ex)await DB.del(o.id);LS.set('nibras-inventaire-ex','1');await reload(false);toast(t('Fiches d\'exemple retirées.'))};
+
+let tt;function toast(m){const el=$('toast');el.textContent=m;el.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('show'),4200)}
+async function reload(doRoute=true){O=(await DB.all()).map(norm).filter(Boolean);refreshFilters();if(doRoute)route()}
+window.addEventListener('pagehide',()=>{if(CUR)saveDraft()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&CUR)saveDraft()});
+
+/* ---------- installation (version installable uniquement) ---------- */
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('bInstall').hidden=false});
+$('bInstall').onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();try{await deferredPrompt.userChoice}catch(e){}deferredPrompt=null;$('bInstall').hidden=true};
+if(!IN_FRAME&&'serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}
+
+(async()=>{
+  applyI18n();buildForm();
+  $('warnDemo').hidden=!IN_FRAME;
+  await DB.open();
+  $('warnDb').hidden=!!DB.db;
+  O=(await DB.all()).map(norm).filter(Boolean);
+  const seeded=LS.get('nibras-inventaire-ex')==='1';
+  if(!O.length&&!seeded){for(const o of exemples())await DB.put(o);O=(await DB.all()).map(norm).filter(Boolean);LS.set('nibras-inventaire-ex','1')}
+  refreshFilters();route();
+})();
+</script>
+
+</body>
+</html>
