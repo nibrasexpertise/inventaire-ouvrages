@@ -14,3 +14,4 @@ Contact : nibrasexpertise@gmail.com · +222 33 03 55 33
 - Communes : 238 communes du RGPH 2023 de l'ANSADE (dont 9 à Nouakchott), rattachées à leur moughataa (liste reprise par citypopulation.de).
 - Image satellite : Esri World Imagery (attribution affichée sur la carte ; conditions d'utilisation à vérifier avant un usage commercial à grande échelle).
 - Carte interactive : Leaflet 1.9.4 (licence BSD-2), fichiers `leaflet.js` et `leaflet.css`.
+- Envoi automatique vers le bureau : programme Google Apps Script (`base-google/Code.gs`) installé dans un tableau Google Sheets du cabinet ; protégé par un code secret choisi par le Directeur Général, qui n'est jamais écrit dans ce dépôt.
